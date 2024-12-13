@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { PropertyCard } from './PropertyCard'
 import { CreatePropertyDialog } from './CreatePropertyDialog'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
+import { Alert, AlertDescription } from "../components/ui/alert"
 
 interface Property {
   id: number
@@ -17,13 +18,14 @@ interface Property {
   photos: string[]
   mainPhoto?: string
   owner: {
+    id: number
     name?: string
     email: string
   }
 }
 
 export function PropertyListingPage() {
-  const { token } = useAuth()
+  const { user, token } = useAuth()
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -49,6 +51,32 @@ export function PropertyListingPage() {
     }
   }
 
+  const handleDelete = async (id: number) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/properties/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete property')
+      }
+
+      await fetchProperties()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete property')
+    }
+  }
+
+  const handleEdit = (id: number) => {
+    // TODO: Implement edit functionality
+    console.log('Edit property:', id)
+  }
+
+  const isSellerOrBoth = user?.profile_type === 'SELLER' || user?.profile_type === 'BOTH'
+
   useEffect(() => {
     fetchProperties()
   }, [token])
@@ -61,6 +89,19 @@ export function PropertyListingPage() {
     )
   }
 
+  if (!isSellerOrBoth) {
+    return (
+      <div className="container mx-auto py-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Only sellers can list properties. Please update your profile to include seller privileges.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex items-center justify-between mb-8">
@@ -69,9 +110,10 @@ export function PropertyListingPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-8">
-          <p className="text-red-600">{error}</p>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {properties.length === 0 ? (
@@ -82,7 +124,12 @@ export function PropertyListingPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {properties.map(property => (
-            <PropertyCard key={property.id} {...property} />
+            <PropertyCard
+              key={property.id}
+              {...property}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+            />
           ))}
         </div>
       )}

@@ -1,10 +1,12 @@
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Home, Bath, Maximize2, Bitcoin, DollarSign, Image as ImageIcon } from "lucide-react"
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
-import { AspectRatio } from "@/components/ui/aspect-ratio"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
+import { Button } from "../components/ui/button"
+import { Home, Bath, Maximize2, Bitcoin, DollarSign, Image as ImageIcon, Heart, Edit, Trash2 } from "lucide-react"
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "../components/ui/carousel"
+import { AspectRatio } from "../components/ui/aspect-ratio"
+import { useAuth } from '../context/AuthContext'
 
 interface PropertyCardProps {
+  id: number
   title: string
   description: string
   price: number
@@ -16,12 +18,16 @@ interface PropertyCardProps {
   photos: string[]
   mainPhoto?: string
   owner: {
+    id: number
     name?: string
     email: string
   }
+  onDelete?: (id: number) => Promise<void>
+  onEdit?: (id: number) => void
 }
 
 export function PropertyCard({
+  id,
   title,
   description,
   price,
@@ -33,7 +39,10 @@ export function PropertyCard({
   photos = [],
   mainPhoto,
   owner,
+  onDelete,
+  onEdit,
 }: PropertyCardProps) {
+  const { user } = useAuth()
   const CurrencyIcon = currency === 'BTC' ? Bitcoin : DollarSign
   const displayPhotos = []
 
@@ -52,6 +61,22 @@ export function PropertyCard({
     const photoPath = photo.startsWith('/') ? photo : `/${photo}`
     return `${import.meta.env.VITE_API_URL}${photoPath}`
   })
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this property?') && onDelete) {
+      await onDelete(id)
+    }
+  }
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(id)
+    }
+  }
+
+  const isOwner = user?.id === owner.id
+  const isBuyerOrBoth = user?.profile_type === 'BUYER' || user?.profile_type === 'BOTH'
+  const isSellerOrBoth = user?.profile_type === 'SELLER' || user?.profile_type === 'BOTH'
 
   return (
     <Card className="w-full max-w-md">
@@ -110,8 +135,28 @@ export function PropertyCard({
           </div>
         </div>
       </CardContent>
-      <CardFooter>
-        <Button className="w-full">Contact Owner</Button>
+      <CardFooter className="flex flex-col gap-2">
+        {isOwner && isSellerOrBoth ? (
+          <div className="flex gap-2 w-full">
+            <Button variant="outline" className="flex-1" onClick={handleEdit}>
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+            <Button variant="destructive" className="flex-1" onClick={handleDelete}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </Button>
+          </div>
+        ) : isBuyerOrBoth ? (
+          <div className="flex gap-2 w-full">
+            <Button className="flex-1">
+              Contact Owner
+            </Button>
+            <Button variant="outline" className="w-12">
+              <Heart className="w-4 h-4" />
+            </Button>
+          </div>
+        ) : null}
       </CardFooter>
     </Card>
   )

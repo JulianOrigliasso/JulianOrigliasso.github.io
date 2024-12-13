@@ -1,9 +1,7 @@
 from sqlalchemy.orm import Session
-from ..models.user import User
+from ..models.user import User, UserProfileType
 from ..schemas.user import UserCreate
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from ..core.auth import get_password_hash, verify_password
 
 def get_user(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
@@ -22,7 +20,9 @@ def create_user(db: Session, user: UserCreate):
         email=user.email,
         wallet_address=user.wallet_address,
         name=user.name,
-        hashed_password=pwd_context.hash(user.password)
+        profile_type=user.profile_type,
+        hashed_password=get_password_hash(user.password),
+        is_active=True
     )
 
     try:
@@ -33,6 +33,3 @@ def create_user(db: Session, user: UserCreate):
     except Exception as e:
         db.rollback()
         raise e
-
-def verify_password(plain_password: str, hashed_password: str):
-    return pwd_context.verify(plain_password, hashed_password)

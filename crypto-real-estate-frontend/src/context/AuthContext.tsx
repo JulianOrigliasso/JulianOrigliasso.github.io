@@ -5,12 +5,14 @@ interface User {
   email: string
   name?: string
   wallet_address: string
+  profile_type: 'BUYER' | 'SELLER' | 'BOTH'
 }
 
 interface AuthContextType {
   user: User | null
   token: string | null
-  login: (token: string, userData: User) => void
+  login: (email: string, password: string) => Promise<void>
+  register: (email: string, password: string, name: string, profileType: 'BUYER' | 'SELLER' | 'BOTH') => Promise<void>
   logout: () => void
   isAuthenticated: boolean
 }
@@ -64,10 +66,49 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     checkAuth()
   }, [])
 
-  const login = (newToken: string, userData: User) => {
-    localStorage.setItem('token', newToken)
-    setToken(newToken)
-    setUser(userData)
+  const login = async (email: string, password: string) => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Login failed');
+    }
+
+    const data = await response.json();
+    localStorage.setItem('token', data.access_token);
+    setToken(data.access_token);
+    await fetchUser(data.access_token);
+  }
+
+  const register = async (email: string, password: string, name: string, profileType: 'BUYER' | 'SELLER' | 'BOTH') => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        name,
+        profile_type: profileType
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Registration failed');
+    }
+
+    const data = await response.json();
+    localStorage.setItem('token', data.access_token);
+    setToken(data.access_token);
+    await fetchUser(data.access_token);
   }
 
   const logout = () => {
@@ -76,10 +117,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUser(null)
   }
 
+  const fetchUser = async (authToken: string) => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/users/me`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`
+      }
+    });
+    if (response.ok) {
+      const userData = await response.json();
+      setUser(userData);
+    } else {
+      throw new Error('Failed to fetch user data');
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
     login,
+    register,
     logout,
     isAuthenticated: !!token
   }

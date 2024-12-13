@@ -21,36 +21,7 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'Login failed');
-      }
-
-      const data = await response.json();
-
-      const userResponse = await fetch(`${import.meta.env.VITE_API_URL}/users/me`, {
-        headers: {
-          'Authorization': `Bearer ${data.access_token}`,
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-      });
-
-      if (!userResponse.ok) {
-        throw new Error('Failed to fetch user data');
-      }
-
-      const userData = await userResponse.json();
-      login(data.access_token, userData);
+      await login(email, password);
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');

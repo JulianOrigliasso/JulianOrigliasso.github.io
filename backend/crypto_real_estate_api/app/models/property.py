@@ -15,15 +15,13 @@ class Property(Base):
     title = Column(String, index=True)
     description = Column(String)
     price = Column(Float)
-    currency = Column(Enum(CryptoCurrency))
+    currency_type = Column(Enum(CryptoCurrency))  # Renamed from currency to currency_type
     location = Column(String)
     bedrooms = Column(Integer)
     bathrooms = Column(Float)
-    area = Column(Float)
+    square_feet = Column(Float)  # Renamed from area to square_feet
+    photos = Column(ARRAY(String), default=[])  # Added photos field
     owner_id = Column(Integer, ForeignKey("users.id"))
 
-    # Photo fields
-    photos = Column(ARRAY(String), default=list)  # Array of photo URLs/paths
-    main_photo = Column(String, nullable=True)    # Main display photo URL/path
-
+    # Relationship
     owner = relationship("User", back_populates="properties")

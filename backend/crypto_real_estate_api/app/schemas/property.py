@@ -7,13 +7,12 @@ class PropertyBase(BaseModel):
     title: str
     description: str
     price: float
-    currency: CryptoCurrency
+    currency_type: CryptoCurrency  # Changed from currency to currency_type
     location: str
     bedrooms: int
     bathrooms: float
-    area: float
+    square_feet: float  # Changed from area to square_feet
     photos: List[str] = []
-    main_photo: Optional[str] = None
 
 class PropertyCreate(PropertyBase):
     pass
@@ -21,7 +20,7 @@ class PropertyCreate(PropertyBase):
 class Property(PropertyBase):
     id: int
     owner_id: int
-    owner: User
+    owner: Optional[User] = None  # Made owner optional to avoid circular dependency issues
 
     class Config:
         from_attributes = True

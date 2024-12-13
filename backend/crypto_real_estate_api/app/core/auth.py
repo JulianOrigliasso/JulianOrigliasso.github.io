@@ -3,16 +3,23 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
-from ..models.user import User
+from passlib.context import CryptContext
+from ..models.user import User, UserProfileType
 from ..core.config import settings
 from ..crud import user as user_crud
 from ..core.database import get_db
 from sqlalchemy.orm import Session
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+# Initialize password context once
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token(data: dict, user: User, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
+    to_encode.update({
+        "profile_type": user.profile_type.value,
+        "user_id": user.id
+    })
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
@@ -41,14 +48,18 @@ async def get_current_user(
     user = user_crud.get_user_by_email(db=db, email=email)
     if user is None:
         raise credentials_exception
+
+    # Verify user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+
     return user
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     return pwd_context.hash(password)

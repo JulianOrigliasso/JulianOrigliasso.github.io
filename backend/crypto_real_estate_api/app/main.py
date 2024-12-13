@@ -9,7 +9,13 @@ import os
 
 from .core.database import engine, get_db
 from . import models, schemas, crud
-from .models import user, property
+from .models import user, property, profiles
+from .schemas import user as user_schemas
+from .schemas import property as property_schemas
+from .schemas import profiles as profile_schemas
+from .crud import user as user_crud
+from .crud import property as property_crud
+from .crud import profiles as profile_crud
 from .core.auth import (
     create_access_token,
     get_current_user,
@@ -48,63 +54,74 @@ models.property.Base.metadata.create_all(bind=engine)
 async def healthz():
     return {"status": "ok"}
 
-@app.post("/auth/register", response_model=schemas.user.User)
-async def register(user: schemas.user.UserCreate, db: Session = Depends(get_db)):
-    db_user = crud.user.get_user_by_email(db, email=user.email)
+@app.post("/api/register", response_model=user_schemas.User)
+async def register(user: user_schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = user_crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
 
-    try:
-        db_user = crud.user.create_user(db=db, user=user)
-        return db_user
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+    # Create user directly through crud function without pre-hashing
+    db_user = user_crud.create_user(
+        db=db,
+        user=user  # Pass the UserCreate object directly
+    )
+    return db_user
 
-@app.post("/auth/login", response_model=Dict[str, str])
+@app.post("/api/login", response_model=user_schemas.Token)
 async def login(
-    form_data: schemas.user.UserLogin,
+    form_data: user_schemas.UserLogin = None,
     db: Session = Depends(get_db)
 ):
-    user = crud.user.get_user_by_email(db, email=form_data.email)
-    if not user or not crud.user.verify_password(form_data.password, user.hashed_password):
+    # Get credentials from JSON body
+    email = form_data.email
+    password = form_data.password
+
+    user = user_crud.get_user_by_email(db, email=email)
+    if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Incorrect email or password"
         )
-    access_token = create_access_token(data={"sub": user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/users/", response_model=schemas.user.User)
+    access_token = create_access_token(data={"sub": user.email}, user=user)
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "profile_type": user.profile_type.value
+    }
+
+@app.post("/api/users/", response_model=schemas.user.User)
 def create_user(user: schemas.user.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.user.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     return crud.user.create_user(db=db, user=user)
 
-@app.get("/users/", response_model=List[schemas.user.User])
+@app.get("/api/users/", response_model=List[schemas.user.User])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    users = crud.user.get_users(db, skip=skip, limit=limit)
+    users = user_crud.get_users(db, skip=skip, limit=limit)
     return users
 
-@app.get("/users/me", response_model=schemas.user.User)
+@app.get("/api/users/me", response_model=schemas.user.User)
 def get_current_user_info(current_user: models.user.User = Depends(get_current_user)):
     return current_user
 
-@app.post("/properties/", response_model=schemas.property.Property)
+@app.post("/api/properties/", response_model=property_schemas.Property)
 def create_property(
-    property: schemas.property.PropertyCreate,
+    property: property_schemas.PropertyCreate,
     current_user: models.user.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    if current_user.profile_type not in [models.user.UserProfileType.SELLER, models.user.UserProfileType.BOTH]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only sellers can create properties"
+        )
     try:
-        return crud.property.create_property(db=db, property=property, owner_id=current_user.id)
+        return property_crud.create_property(db=db, property=property, owner_id=current_user.id)
     except Exception as e:
         print(f"Error in create_property: {str(e)}")
         raise HTTPException(
@@ -112,11 +129,10 @@ def create_property(
             detail=f"Error creating property: {str(e)}"
         )
 
-@app.get("/properties/", response_model=List[schemas.property.Property])
+@app.get("/api/properties/", response_model=List[property_schemas.Property])
 def read_properties(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     try:
-        properties = crud.property.get_properties(db, skip=skip, limit=limit)
-        # Ensure photos field is initialized for each property
+        properties = property_crud.get_properties(db, skip=skip, limit=limit)
         for prop in properties:
             if prop.photos is None:
                 prop.photos = []
@@ -128,21 +144,21 @@ def read_properties(skip: int = 0, limit: int = 100, db: Session = Depends(get_d
             detail=f"Error fetching properties: {str(e)}"
         )
 
-@app.get("/users/{user_id}/properties/", response_model=List[schemas.property.Property])
+@app.get("/api/users/{user_id}/properties/", response_model=List[property_schemas.Property])
 def read_user_properties(user_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    properties = crud.property.get_user_properties(db, owner_id=user_id, skip=skip, limit=limit)
+    properties = property_crud.get_user_properties(db, owner_id=user_id, skip=skip, limit=limit)
     return properties
 
-@app.get("/properties/my/", response_model=List[schemas.property.Property])
+@app.get("/api/properties/my/", response_model=List[property_schemas.Property])
 def get_my_properties(
     current_user: models.user.User = Depends(get_current_user),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    return crud.property.get_user_properties(db, owner_id=current_user.id, skip=skip, limit=limit)
+    return property_crud.get_user_properties(db, owner_id=current_user.id, skip=skip, limit=limit)
 
-@app.get("/properties/search/", response_model=List[schemas.property.Property])
+@app.get("/api/properties/search/", response_model=List[property_schemas.Property])
 def search_properties(
     query: Optional[str] = None,
     min_price: Optional[float] = None,
@@ -154,18 +170,18 @@ def search_properties(
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    return crud.property.search_properties(
+    return property_crud.search_properties(
         db, query, min_price, max_price, bedrooms, location, currency, skip, limit
     )
 
-@app.post("/properties/{property_id}/photos/", response_model=schemas.property.Property)
+@app.post("/api/properties/{property_id}/photos/", response_model=property_schemas.Property)
 async def upload_property_photos(
     property_id: int,
     files: List[UploadFile] = File(...),
     current_user: models.user.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    property_item = crud.property.get_property(db, property_id=property_id)
+    property_item = property_crud.get_property(db, property_id=property_id)
     if not property_item:
         raise HTTPException(status_code=404, detail="Property not found")
     if property_item.owner_id != current_user.id:
@@ -185,14 +201,14 @@ async def upload_property_photos(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.put("/properties/{property_id}/main-photo/", response_model=schemas.property.Property)
+@app.put("/api/properties/{property_id}/main-photo/", response_model=property_schemas.Property)
 async def set_main_photo(
     property_id: int,
     photo_url: str,
     current_user: models.user.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    property_item = crud.property.get_property(db, property_id=property_id)
+    property_item = property_crud.get_property(db, property_id=property_id)
     if not property_item:
         raise HTTPException(status_code=404, detail="Property not found")
     if property_item.owner_id != current_user.id:
@@ -205,3 +221,111 @@ async def set_main_photo(
     db.commit()
     db.refresh(property_item)
     return property_item
+
+@app.post("/api/users/profile/buyer", response_model=profile_schemas.BuyerProfile)
+async def create_buyer_profile(
+    profile: profile_schemas.BuyerProfileCreate,
+    current_user: models.user.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.profile_type not in [models.user.UserProfileType.BUYER, models.user.UserProfileType.BOTH]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not authorized to create a buyer profile"
+        )
+
+    existing_profile = profile_crud.get_buyer_profile(db, current_user.id)
+    if existing_profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Buyer profile already exists"
+        )
+
+    return profile_crud.create_buyer_profile(db, current_user.id, profile)
+
+@app.post("/api/users/profile/seller", response_model=profile_schemas.SellerProfile)
+async def create_seller_profile(
+    profile: profile_schemas.SellerProfileCreate,
+    current_user: models.user.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.profile_type not in [models.user.UserProfileType.SELLER, models.user.UserProfileType.BOTH]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not authorized to create a seller profile"
+        )
+
+    existing_profile = profile_crud.get_seller_profile(db, current_user.id)
+    if existing_profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Seller profile already exists"
+        )
+
+    return profile_crud.create_seller_profile(db, current_user.id, profile)
+
+@app.get("/api/users/profile/buyer", response_model=schemas.profiles.BuyerProfile)
+async def get_buyer_profile(
+    current_user: models.user.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    profile = crud.profiles.get_buyer_profile(db, current_user.id)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Buyer profile not found"
+        )
+    return profile
+
+@app.get("/api/users/profile/seller", response_model=schemas.profiles.SellerProfile)
+async def get_seller_profile(
+    current_user: models.user.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    profile = crud.profiles.get_seller_profile(db, current_user.id)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Seller profile not found"
+        )
+    return profile
+
+@app.put("/api/users/profile/buyer", response_model=schemas.profiles.BuyerProfile)
+async def update_buyer_profile(
+    profile: schemas.profiles.BuyerProfileCreate,
+    current_user: models.user.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.profile_type not in [models.user.UserProfileType.BUYER, models.user.UserProfileType.BOTH]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not authorized to update buyer profile"
+        )
+
+    updated_profile = crud.profiles.update_buyer_profile(db, current_user.id, profile)
+    if not updated_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Buyer profile not found"
+        )
+    return updated_profile
+
+@app.put("/api/users/profile/seller", response_model=schemas.profiles.SellerProfile)
+async def update_seller_profile(
+    profile: schemas.profiles.SellerProfileCreate,
+    current_user: models.user.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.profile_type not in [models.user.UserProfileType.SELLER, models.user.UserProfileType.BOTH]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not authorized to update seller profile"
+        )
+
+    updated_profile = crud.profiles.update_seller_profile(db, current_user.id, profile)
+    if not updated_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Seller profile not found"
+        )
+    return updated_profile
