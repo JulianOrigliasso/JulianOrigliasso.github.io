@@ -8,6 +8,7 @@ export interface Property {
   bedrooms: number;
   bathrooms: number;
   area: number;
+  type: 'house' | 'apartment' | 'condo';
   owner_id: number;
   payment_status: 'AVAILABLE' | 'PENDING' | 'SOLD';
   payment_address: string | null;
