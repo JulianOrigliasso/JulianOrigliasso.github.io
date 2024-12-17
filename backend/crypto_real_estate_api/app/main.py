@@ -3,6 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 import psycopg
 from .core.database import engine, Base
 from .routes import properties, users, auth, transactions
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Crypto Real Estate API")
 

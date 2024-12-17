@@ -9,7 +9,7 @@ from ..models.user import User
 from ..schemas.user import Token, UserCreate, UserResponse
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 @router.post("/register", response_model=UserResponse)
 async def register(
