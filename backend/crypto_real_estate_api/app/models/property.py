@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Enum, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
@@ -18,17 +18,17 @@ class Property(Base):
     __tablename__ = "properties"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True)
-    description = Column(String)
+    title = Column(String(200), index=True)  # Reasonable length for property titles
+    description = Column(String(2000))  # Long text for property descriptions
     price = Column(Float)
-    currency = Column(Enum(CryptoCurrency))
-    location = Column(String)
+    currency = Column(String(10))  # Changed from Enum to String for MySQL compatibility
+    location = Column(String(255))  # Sufficient for addresses
     bedrooms = Column(Integer)
     bathrooms = Column(Integer)
     area = Column(Float)  # in square meters
     owner_id = Column(Integer, ForeignKey("users.id"))
-    payment_status = Column(Enum(PaymentStatus), default=PaymentStatus.AVAILABLE)
-    payment_address = Column(String, nullable=True)  # Crypto wallet address for payment
+    payment_status = Column(String(10), default=PaymentStatus.AVAILABLE.value)
+    payment_address = Column(String(255), nullable=True)  # Crypto wallet address
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     owner = relationship("User", back_populates="properties")
