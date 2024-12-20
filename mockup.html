@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Marketplace - Mockup</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+
+        /* Header styles */
+        header {
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1rem;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-left {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .auth-buttons button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .login-btn {
+            background: transparent;
+            border: 1px solid #007bff !important;
+            color: #007bff;
+        }
+
+        .signup-btn {
+            background: #007bff;
+            color: white;
+        }
+
+        /* Search bar styles */
+        .search-container {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1.1rem;
+        }
+
+        /* Main content styles */
+        main {
+            margin-top: 80px;
+            padding: 2rem 1rem;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .featured-listings {
+            margin-top: 2rem;
+        }
+
+        .listings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .listing-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .listing-image {
+            width: 100%;
+            height: 200px;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .listing-details {
+            padding: 1rem;
+        }
+
+        .listing-price {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        /* Footer styles */
+        footer {
+            background: #f8f9fa;
+            padding: 2rem 1rem;
+            margin-top: 4rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .footer-links a {
+            color: #666;
+            text-decoration: none;
+            margin-right: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <nav class="nav-left">
+                <div class="auth-buttons">
+                    <button class="login-btn">Login</button>
+                    <button class="signup-btn">Sign Up</button>
+                </div>
+            </nav>
+            <nav class="nav-right">
+                <a href="#residential">Residential Properties</a>
+                <a href="#commercial">Commercial Properties</a>
+                <a href="#land">Land</a>
+                <a href="#businesses">Businesses</a>
+                <a href="#items">Items</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Search Bar -->
+        <div class="search-container">
+            <input type="text" class="search-bar" placeholder="Search properties, businesses, and items...">
+        </div>
+
+        <!-- Featured Listings -->
+        <section class="featured-listings">
+            <h2>Featured Listings</h2>
+            <div class="listings-grid">
+                <!-- Sample Listing Cards -->
+                <div class="listing-card">
+                    <div class="listing-image">
+                        [Property Image]
+                    </div>
+                    <div class="listing-details">
+                        <h3>Modern Apartment</h3>
+                        <p class="listing-price">$450,000</p>
+                        <p>2 bed, 2 bath apartment with city views</p>
+                    </div>
+                </div>
+                <div class="listing-card">
+                    <div class="listing-image">
+                        [Commercial Space]
+                    </div>
+                    <div class="listing-details">
+                        <h3>Office Space</h3>
+                        <p class="listing-price">$750,000</p>
+                        <p>1,200 sqft prime location office space</p>
+                    </div>
+                </div>
+                <div class="listing-card">
+                    <div class="listing-image">
+                        [Land Plot]
+                    </div>
+                    <div class="listing-details">
+                        <h3>Development Land</h3>
+                        <p class="listing-price">$1,200,000</p>
+                        <p>5 acres of development land</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="#about">About Us</a>
+                <a href="#terms">Terms of Service</a>
+                <a href="#privacy">Privacy Policy</a>
+                <a href="#contact">Contact Us</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
